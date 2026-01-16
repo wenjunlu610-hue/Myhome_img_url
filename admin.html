@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 我的老家</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #FDFCF8; font-family: "PingFang SC", "STHeiti", sans-serif; }
+        .font-serif-title { font-family: 'Noto Serif SC', serif; }
+        .festive-red { color: #B02418; }
+        .bg-festive { background-color: #B02418; }
+        .gold-accent { color: #D4AF37; }
+    </style>
+</head>
+<body class="pb-20">
+    <!-- 顶部导航 -->
+    <header class="p-5 flex justify-between items-center bg-white shadow-md sticky top-0 z-50">
+        <h1 class="text-xl font-bold festive-red font-serif-title">后台管理系统</h1>
+        <div class="flex items-center space-x-4">
+            <a href="index.html" class="bg-stone-100 px-3 py-1 rounded-full text-xs text-stone-600 hover:bg-stone-200 transition-colors">返回首页</a>
+            <label class="bg-stone-100 px-3 py-1 rounded-full text-xs text-stone-600 hover:bg-stone-200 transition-colors cursor-pointer">
+                <input type="file" id="import-file" accept=".json" class="hidden">
+                导入数据
+            </label>
+            <button id="save-all-btn" class="bg-festive text-white px-4 py-1 rounded-full text-xs hover:bg-red-700 transition-colors">保存所有更改</button>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 mt-6">
+        <!-- 状态提示 -->
+        <div id="status-message" class="hidden p-3 rounded-lg mb-4 text-center text-sm"></div>
+
+        <!-- 家乡管理 -->
+        <section class="mb-8 p-5 bg-white rounded-3xl shadow-sm border border-stone-100">
+            <h2 class="text-lg font-bold text-stone-800 mb-4">家乡管理</h2>
+            <div class="space-y-4">
+                <div id="hometowns-container">
+                    <!-- 家乡名称将动态生成 -->
+                </div>
+                <button id="update-hometown-btn" class="w-full bg-stone-100 py-2 rounded-lg text-sm hover:bg-stone-200 transition-colors" onclick="confirmUpdateHometown()">修改家乡名称</button>
+            </div>
+        </section>
+
+        <!-- Banner管理 -->
+        <section class="mb-8 p-5 bg-white rounded-3xl shadow-sm border border-stone-100">
+            <h2 class="text-lg font-bold text-stone-800 mb-4">Banner管理</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">Banner图片URL</label>
+                    <input type="text" id="banner-image-url" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">Banner副标题</label>
+                    <input type="text" id="banner-subtitle" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">Banner标题</label>
+                    <input type="text" id="banner-title" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">装饰文字</label>
+                    <input type="text" id="banner-decoration" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+            </div>
+        </section>
+
+        <!-- 音频故事管理 -->
+        <section class="mb-8 p-5 bg-white rounded-3xl shadow-sm border border-stone-100">
+            <h2 class="text-lg font-bold text-stone-800 mb-4">音频故事管理</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">故事标题</label>
+                    <input type="text" id="audio-title" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">音频URL</label>
+                    <input type="text" id="audio-url" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 mb-1">唱片机图片URL</label>
+                    <input type="text" id="disc-image-url" class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+            </div>
+        </section>
+
+        <!-- 产品管理 -->
+        <section class="mb-8 p-5 bg-white rounded-3xl shadow-sm border border-stone-100">
+            <h2 class="text-lg font-bold text-stone-800 mb-4">产品管理</h2>
+            <div id="products-admin-container" class="space-y-4">
+                <!-- 产品列表将动态生成 -->
+            </div>
+            <button id="add-product-btn" class="w-full bg-stone-100 py-2 rounded-lg text-sm hover:bg-stone-200 transition-colors mt-4">+ 添加产品</button>
+        </section>
+    </div>
+
+    <script>
+        let siteData = null;
+
+        // DOM元素
+        const statusMessage = document.getElementById('status-message');
+        const saveAllBtn = document.getElementById('save-all-btn');
+        const importFile = document.getElementById('import-file');
+        const hometownsContainer = document.getElementById('hometowns-container');
+        const bannerImageUrl = document.getElementById('banner-image-url');
+        const bannerSubtitle = document.getElementById('banner-subtitle');
+        const bannerTitle = document.getElementById('banner-title');
+        const bannerDecoration = document.getElementById('banner-decoration');
+        const audioTitle = document.getElementById('audio-title');
+        const audioUrl = document.getElementById('audio-url');
+        const discImageUrl = document.getElementById('disc-image-url');
+        const productsAdminContainer = document.getElementById('products-admin-container');
+        const addProductBtn = document.getElementById('add-product-btn');
+
+        // 显示状态消息
+        function showStatus(message, isSuccess = true) {
+            statusMessage.textContent = message;
+            statusMessage.className = `p-3 rounded-lg mb-4 text-center text-sm ${isSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 3000);
+        }
+
+        // 加载数据
+        async function loadData() {
+            try {
+                const response = await fetch('data.json');
+                siteData = await response.json();
+                renderForm();
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showStatus('加载数据失败，请检查文件是否存在', false);
+            }
+        }
+
+        // 渲染表单
+        function renderForm() {
+            if (!siteData) return;
+
+            // 渲染家乡列表
+            renderHometowns();
+
+            // 渲染Banner数据
+            bannerImageUrl.value = siteData.banner.imageUrl;
+            bannerSubtitle.value = siteData.banner.subtitle;
+            bannerTitle.value = siteData.banner.title;
+            bannerDecoration.value = siteData.banner.decorationText;
+
+            // 渲染音频故事数据
+            audioTitle.value = siteData.audioStory.title;
+            audioUrl.value = siteData.audioStory.audioUrl;
+            discImageUrl.value = siteData.audioStory.discImageUrl;
+
+            // 渲染产品列表
+            renderProducts();
+        }
+
+        // 渲染家乡列表
+        function renderHometowns() {
+            hometownsContainer.innerHTML = '';
+            
+            if (siteData && siteData.hometowns && siteData.hometowns.length > 0) {
+                const hometownDiv = document.createElement('div');
+                hometownDiv.className = 'flex items-center space-x-3';
+                hometownDiv.innerHTML = `
+                    <input type="text" value="${siteData.hometowns[0]}" 
+                           class="flex-1 p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                           onchange="updateHometown(this.value)">
+                `;
+                hometownsContainer.appendChild(hometownDiv);
+            }
+        }
+
+        // 更新家乡名称
+        function updateHometown(value) {
+            if (siteData && siteData.hometowns) {
+                siteData.hometowns[0] = value;
+            }
+        }
+
+        // 确认修改家乡名称
+        function confirmUpdateHometown() {
+            if (siteData && siteData.hometowns) {
+                showStatus('家乡名称修改成功');
+            } else {
+                showStatus('数据加载中，请稍后再试', false);
+            }
+        }
+
+        // 渲染产品列表
+        function renderProducts() {
+            productsAdminContainer.innerHTML = '';
+            
+            siteData.products.forEach((product, index) => {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'p-4 border border-stone-100 rounded-lg bg-stone-50';
+                productDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-stone-800">产品 ${index + 1}</h3>
+                        <button onclick="removeProduct(${index})" 
+                                class="bg-red-100 text-red-600 px-3 py-1 rounded-lg text-xs hover:bg-red-200 transition-colors">删除产品</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-stone-500 mb-1">产品名称</label>
+                            <input type="text" value="${product.name}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'name', this.value)">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-stone-500 mb-1">产品描述</label>
+                            <input type="text" value="${product.description}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'description', this.value)">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-stone-500 mb-1">价格</label>
+                            <input type="number" value="${product.price}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'price', parseFloat(this.value))">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-stone-500 mb-1">标签</label>
+                            <input type="text" value="${product.tag}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'tag', this.value)">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-stone-500 mb-1">图片URL</label>
+                            <input type="text" value="${product.imageUrl}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'imageUrl', this.value)">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-stone-500 mb-1">二维码URL</label>
+                            <input type="text" value="${product.qrcodeUrl || ''}" 
+                                   class="w-full p-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                   onchange="updateProductField(${index}, 'qrcodeUrl', this.value)">
+                        </div>
+                    </div>
+                `;
+                productsAdminContainer.appendChild(productDiv);
+            });
+        }
+
+        // 更新产品字段
+        function updateProductField(index, field, value) {
+            if (siteData && siteData.products) {
+                siteData.products[index][field] = value;
+            }
+        }
+
+        // 添加产品
+        function addProduct() {
+            if (siteData && siteData.products) {
+                const newProduct = {
+                    id: Date.now(),
+                    name: '新产品',
+                    description: '产品描述',
+                    price: 0,
+                    imageUrl: '',
+                    tag: '',
+                    qrcodeUrl: ''
+                };
+                siteData.products.push(newProduct);
+                renderProducts();
+                showStatus('产品添加成功');
+            } else {
+                showStatus('数据加载中，请稍后再试', false);
+            }
+        }
+
+        // 删除产品
+        function removeProduct(index) {
+            if (siteData && siteData.products) {
+                siteData.products.splice(index, 1);
+                renderProducts();
+                showStatus('产品删除成功');
+            } else {
+                showStatus('数据加载中，请稍后再试', false);
+            }
+        }
+
+        // 导入数据
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // 验证数据格式
+                    if (importedData.hometowns && importedData.banner && importedData.audioStory && importedData.products) {
+                        siteData = importedData;
+                        renderForm();
+                        showStatus('数据导入成功');
+                    } else {
+                        showStatus('导入的数据格式不正确，请检查文件结构', false);
+                    }
+                } catch (error) {
+                    console.error('导入数据失败:', error);
+                    showStatus('导入数据失败，请检查文件格式', false);
+                }
+            };
+            reader.readAsText(file);
+            // 重置文件输入，允许重复选择同一文件
+            event.target.value = '';
+        }
+
+        // 保存数据到本地文件（前端模拟，实际项目中需要后端支持）
+        function saveData() {
+            try {
+                // 更新Banner数据
+                siteData.banner.imageUrl = bannerImageUrl.value;
+                siteData.banner.subtitle = bannerSubtitle.value;
+                siteData.banner.title = bannerTitle.value;
+                siteData.banner.decorationText = bannerDecoration.value;
+
+                // 更新音频故事数据
+                siteData.audioStory.title = audioTitle.value;
+                siteData.audioStory.audioUrl = audioUrl.value;
+                siteData.audioStory.discImageUrl = discImageUrl.value;
+
+                // 创建下载链接
+                const dataStr = JSON.stringify(siteData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'data.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                showStatus('数据已成功导出，请将文件保存到项目目录中替换原data.json文件');
+            } catch (error) {
+                console.error('保存数据失败:', error);
+                showStatus('保存数据失败，请检查浏览器控制台', false);
+            }
+        }
+
+        // 事件监听
+        addProductBtn.addEventListener('click', addProduct);
+        saveAllBtn.addEventListener('click', saveData);
+        importFile.addEventListener('change', handleFileImport);
+
+        // 页面加载完成后加载数据
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
